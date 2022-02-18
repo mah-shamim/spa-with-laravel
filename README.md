@@ -227,13 +227,14 @@ The command above will create a new user and save its data in our database then 
 The default password for every user created with a factory is `password`.
 
 Let's visit the login page and access out application dashboard.
-[Login](./loginpage.png)
+
+[Login]("./loginpage.png")
 
 ### Jetstream dashboard
 
 After login you are redirected to the Jetstream dashboard. A quick note, you can customize this page as you like, it is just a starting point.
 
-[Login](./dashboard.png)
+[Dashboard](./dashboard.png)
 
 ### Inertia/Vue Components
 
