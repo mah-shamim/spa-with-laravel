@@ -228,7 +228,7 @@ The default password for every user created with a factory is `password`.
 
 Let's visit the login page and access out application dashboard.
 
-![Login]("./loginpage.png")
+![Login](./loginpage.png)
 
 ### Jetstream dashboard
 
