@@ -562,14 +562,326 @@ Done! if you visit the `/photos` page you should see ten photos. 🥳
 
 ## How to refactor the admin dashboard and create new admin pages - Live coding
 
-In this chapter we will Re-route the Jetstream dashboard, make a route group for all admin pages, add a new link to the dashboard, add a new Admin Page component, then take data from the db and render them in a simple table
+In this chapter we will Re-route the Jetstream dashboard, and make a route group for all admin pages. Then we will see how to add a new link to the dashboard and, add a new admin page. Finally we will take data a collection of data from the db and render them in a basic table. The default table isn't cool so for those reading this article, i decided to add a Tailwind table component.
 
 ### Re-route the Jetstream dashboard
 
+If we look at the `config/fortify.php` file we notice that around line 64 there is a key called home which is calling the Home constant of the Route service provider.
+
+This means that we can tweek  the constant and redirect the authenticated user to a different route. Lets go by steps:
+
+- update the HOME Constant
+- make a route group and redirect logged in users to `admin/` instead of '/dashboard'
+
+Our application will have only a single user, therefore once it is logged in it is clearly the site admin so makes sense to redirect to an `admin` uri.
+
+Change the HOME constant in `app/Providers/RouteServiceProvider.php` around line 20 to match the following
+
+```php
+public const HOME = '/admin';
+```
+
 ### How to add Admin pages route group
+
+Next let's update our route inside web.php we will change the route registered by Jetstream from this
+
+```php
+Route::middleware(['auth:sanctum', 'verified'])->get('/', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+```
+
+To this
+
+```php
+Route::middleware(['auth:sanctum', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+
+    Route::get('/', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
+    // other admin routes here
+});
+
+```
+
+The route above is a route group that uses for all routes within the group the `auth:sanctum` middleware, a prefix of `admin` and add a `admin` suffix to each route name.
+
+The end result is that we will be able to refer to the dashboard route by name, which now will be `admin.dashboard` and when we log in and will be redirected to the `admin` route our dashboard route will respond since it's uri is just `/` but the goup prefix will prefix every route in the group and make their uri starting with `admin`.
+
+If you now run `sail artisan route:list` you will notice that the dashboard route has changed are we expected.
+
+Before moving to the next step we need to update both the `/layouts/AppLayout.vue` and '/Pages/Welcome.vue` components.
+
+Do you remeber that the dashboard route name is now `admin.dashboard` and not just `dashboard`?
+
+Let's inspect the two components and update every reference of `route('dahsboard')` to this
+
+```js
+route('admin.dahsboard')
+```
+
+and also every reference of `route().current('dashboard')` to this
+
+```js
+route().current('admin.dashboard')
+```
+
+After all changes make sure to recompile the vue components and watch changes by running `sail npm run watch` then visit the home page to check if everything is working.
 
 ### How to add a new link to the dashboard
 
+Now, to add a new admin page where list all photos stored in the database we need to add a new route the the group we created earlier. Let's hit the `web.php` file and make our changes.
+
+In the Route group we will add a new route
+
+```php
+Route::middleware(['auth:sanctum', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+
+    Route::get('/', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
+    // 👇 other admin routes here 👇
+
+    Route::get('/photos', function () {
+        return inertia('Admin/Photos');
+    })->name('photos');
+
+});
+```
+
+In the new route above we used the `inertia()` helper function that does the same exact thing, return an Inertia/Response and render our Page component. We placed the component under an `Admin` folder inside `Pages` and we will call it `Photos.vue`.
+
+Before we create the component let's add a new link to the dashboard that points to our new route.
+
+Inside `AppLayout.vue`, find the `Navigation Links` comment and copy/paste the `jet-sav-link` component that is actually displaing a link to the dashboard and make it point to our new route.
+
+You will end up having something like that
+
+```html
+<!-- Navigation Links -->
+<div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+    <jet-nav-link :href="route('admin.dashboard')" :active="route().current('admin.dashboard')">
+        Dashboard
+    </jet-nav-link>
+      <jet-nav-link :href="route('admin.photos')" :active="route().current('admin.photos')">
+        Photos
+    </jet-nav-link>
+</div>
+
+```
+
+If you visit `localhost/dashboard` and open the inspector you should see an error
+
+```js
+Error: Cannot find module `./Photos.vue`
+```
+
+It is fine, we haven't created the Photo page component yet, let's do it now!
+
 ### How to add a new Admin Page component
 
+Make a file named `Photos.vue` inside `Pages/Admin` folder. Below the bash commands to create the folder and the file via terminal but you can do the same using your IDE graphical interface.
+
+```bash
+cd resources/js/Pages
+mkdir Admin
+touch Admin/Photos.vue
+```
+
+To make this new page look like the Dashboard page we will copy over its content. You should end up having something like that
+
+```vue
+
+<template>
+  <app-layout title="Dashboard">
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 leading-tight">Photos</h2>
+    </template>
+
+    <div class="py-12">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
+          <!-- All posts goes here -->
+          <h1 class="text-2xl">Photos</h1>
+           
+        </div>
+      </div>
+    </div>
+  </app-layout>
+</template>
+
+<script>
+import { defineComponent } from "vue";
+import AppLayout from "@/Layouts/AppLayout.vue";
+
+export default defineComponent({
+  components: {
+    AppLayout,
+  },
+});
+</script>
+
+```
+
+I removed from the Dashboard template few pieces so make sure to double check the code above. The `welcome` component was removed from the template as it is not required in this page and also its reference in the script section. The rest is identical.
+
+Feel free to update the page title referenced as prop on the `<app-layout title="Dashboard">` component.
+
+Now when you visit `localhost/admin` you can click on the Photos menu item and see our Photos page component content, not much for now, just an `h1`.
+
 ### Render records in the admin page as a table
+
+Now it's time to render the data onto a table. To make things work let's first add our markup and fake that we already have access to an array of objects and loop over them inside our table than we will figure out how to make things work for real.
+
+```html
+ <table class="table-auto w-full text-left">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Photo</th>
+      <th>Desciption</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr v-for="photo in photos">
+      <td>{{ photo.id }}</td>
+      <td><img width="60" :src="photo.path" alt="" /></td>
+      <td>{{photo.description}}</td>
+      <td>View - Edit - Delete</td>
+
+    </tr>
+  </tbody>
+</table>
+
+```
+
+Ok, since we assumed that our component has access to a list of Photos let's pass a new prop to the component from the Route.
+
+Update the route in web.php and pass to the `inertia()` function a second argument that will be an associative array that will be props. In it we will call `Photo::all` to have a collection to assign to a `photos` key
+
+```php
+Route::get('/photos', function () {
+        return inertia('Admin/Photos', [
+            'photos' => Photo::all()
+        ]);
+    })->name('photos');
+
+```
+
+To connect the props to our Page component we need to define the prop also inside the component.
+
+```js
+<script>
+import { defineComponent } from "vue";
+import AppLayout from "@/Layouts/AppLayout.vue";
+
+export default defineComponent({
+  components: {
+    AppLayout,
+  },
+  /* 👇 Pass the photos array as a props 👇 */
+  props: {
+    photos: Array,
+  },
+});
+</script>
+```
+
+#### Extra: Use a Tailwind table component
+
+Tailwind is a css framework similar to bootstrap, there are a nuber of free to use components that we can grab from the documentation, tweek and use.
+
+This table component is free and looks nice <https://tailwindui.com/components/application-ui/lists/tables>.
+
+We can tweek the Photo page template and use the Tailwind table component to get a nice looking table like so.
+
+```vue
+
+<template>
+    <app-layout title="Dashboard">
+        <template #header>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Photos</h2>
+        </template>
+
+         <div class="py-12">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+              <!-- All posts goes here -->
+              <h1 class="text-2xl">Photos</h1>
+              <a class="px-4 bg-sky-900 text-white rounded-md" href>Create</a>
+              <div class="flex flex-col">
+                  <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                      <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                          <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                              <table class="min-w-full divide-y divide-gray-200">
+                                  <thead class="bg-gray-50">
+                                      <tr>
+                                          <th
+                                              scope="col"
+                                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                          >ID</th>
+                                          <th
+                                              scope="col"
+                                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                          >Photos</th>
+                                          <th
+                                              scope="col"
+                                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                          >Description</th>
+                                          <th scope="col" class="relative px-6 py-3">
+                                              <span class="sr-only">Edit</span>
+                                          </th>
+                                      </tr>
+                                  </thead>
+                                  <tbody class="bg-white divide-y divide-gray-200">
+                                      <tr v-for="photo in photos" :key="photo.id">
+                                          <td class="px-6 py-4 whitespace-nowrap">
+                                              <div
+                                                  class="text-sm text-gray-900"
+                                              >{{ photo.id }}</div>
+                                          </td>
+
+                                          <td class="px-6 py-4 whitespace-nowrap">
+                                              <div class="flex items-center">
+                                                  <div class="flex-shrink-0 h-10 w-10">
+                                                      <img
+                                                          class="h-10 w-10 rounded-full"
+                                                          :src="photo.path"
+                                                          alt
+                                                      />
+                                                  </div>
+                                              </div>
+                                          </td>
+
+                                          <td class="px-6 py-4 whitespace-nowrap">
+                                              <div class="text-sm text-gray-900">
+                                                {{ photo.description.slice(1, 100) + '...' }}
+                                              </div>
+                                          </td>
+
+                                          <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                              <a href="#" class="text-indigo-600 hover:text-indigo-900">
+                                              View - Edit - Delete
+                                              </a>
+                                          </td>
+                                      </tr>
+                                  </tbody>
+                              </table>
+                          </div>
+                      </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+    </app-layout>
+</template>
+```
+
+## Conclusions
+
+This is just an overviw of how I'd build a single page application using this technologies.
+If you are familiar with server-side routing and Vuejs then you will enjoy bulding a single page application with Larave, Inertia and Vuejs. The learning curve isn't that high plus you have exhaustive documentations.
+
+You can find the source code for this guide [here]() on my bitbucket account.
