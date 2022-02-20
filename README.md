@@ -857,7 +857,7 @@ We can tweek the Photo page template and use the Tailwind table component to get
 
                                           <td class="px-6 py-4 whitespace-nowrap">
                                               <div class="text-sm text-gray-900">
-                                                {{ photo.description.slice(1, 100) + '...' }}
+                                                {{ photo.description.slice(0, 100) + '...' }}
                                               </div>
                                           </td>
 
@@ -879,9 +879,78 @@ We can tweek the Photo page template and use the Tailwind table component to get
 </template>
 ```
 
+## How to submit Forms with files - Live 5
+
+For the next section we will look into how to submit a form so that we can add a new photo to the database.
+
+- Add a create button
+- Add a create route
+- Define the PhotosCreate component
+- Add a form
+- Validate data
+- Show Validation errors
+- Save the file to the filesystem
+- Save the model
+
+### Create a new photo
+
+Add a link that points to a create route
+
+```html
+<a class="px-4 bg-sky-900 text-white rounded-md" :href="route('admin.photos.create')">Create</a>
+```
+
+Create the route within the admin group
+
+```php
+Route::get('/photos/create', function () {
+    return inertia('Admin/PhotosCreate');
+})->name('photos.create');
+```
+
+Create the `Admin/PhotosCreate.vue` component
+
+```vue
+
+    <template>
+    <app-layout title="Dashboard">
+        <template #header>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Photos</h2>
+        </template>
+
+         <div class="py-12">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+              <!-- All posts goes here -->
+              <h1 class="text-2xl">Add a new Photo</h1>
+
+
+            </div>
+        </div>
+    </app-layout>
+</template>
+
+
+<script>
+import { defineComponent } from "vue";
+import AppLayout from "@/Layouts/AppLayout.vue";
+
+export default defineComponent({
+  components: {
+    AppLayout,
+  },
+
+});
+</script>
+
+```
+
+##
+
 ## Conclusions
 
 This is just an overviw of how I'd build a single page application using this technologies.
 If you are familiar with server-side routing and Vuejs then you will enjoy bulding a single page application with Larave, Inertia and Vuejs. The learning curve isn't that high plus you have exhaustive documentations.
 
-You can find the source code for this guide [here]() on my bitbucket account.
+You can find the source code for this guide on my bitbucket account:
+[Article](https://bitbucket.org/fbhood/spa-with-laravel-9/src/master/)
+[Application](https://bitbucket.org/fbhood/serephotos-v2/src/dev/)
